@@ -40,4 +40,42 @@ CHIP CPU {
 
     PARTS:
     // Put your code here:
+    DMux (in=true, sel=instruction[15], a=a, b=c);
+
+    // D register controls
+    And(a=c, b=instruction[4], out=loadd);
+    DRegister(in=aluout, load=loadd, out=dout);
+
+    // A register controls
+    And(a=c, b=instruction[5], out=sela);
+    Mux16(a=instruction, b=aluout, sel=sela, out=aregin);
+
+    Or(a=a, b=sela, out=loada);
+    ARegister(in=aregin, load=loada, out=aout, out[0..14]=addressM);
+
+    // ALU controls
+    Mux16 (a=aout, b=inM, sel=instruction[12], out=y);
+    ALU(x=dout, y=y,
+        zx=instruction[11], nx=instruction[10], zy=instruction[9],
+        ny=instruction[8], f=instruction[7], no=instruction[6],
+        out=aluout, out=outM, zr=zr, ng=ng);
+
+    // Output
+    And(a=c, b=instruction[3], out=writeM);
+
+    // Fetch instruction
+    Or (a=zr, b=ng, out=zrOrNg);
+    Not (in=zrOrNg, out=ps);
+
+    And(a=ps, b=instruction[0], out=jgt);
+    And(a=zr, b=instruction[1], out=jeq);
+    And(a=ng, b=instruction[2], out=jlt);
+    Or (a=jeq, b=jgt, out=jge);
+    Or (a=jeq, b=jlt, out=jle);
+    Or (a=jgt, b=jlt, out=jne);
+    Or (a=jgt, b=jle, out=jmp);
+
+    And(a=c, b=jmp, out=jumpToA);
+    DMux (in=true, sel=jumpToA, a=inc, b=loadpc);
+    PC(in=aout, inc=inc, load=loadpc, reset=reset, out[0..14]=pc);
 }
